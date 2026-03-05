@@ -43,20 +43,8 @@ export default function Home() {
     setError(null);
 
     try {
-      const res = await fetch(`/api/agreement?id=${encodeURIComponent(id)}`);
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error ?? `Error ${res.status}`);
-        return;
-      }
-
-      if (!data.documentUrl) {
-        setError('この契約書にはドキュメントURLが含まれていません。');
-        return;
-      }
-
-      window.location.href = `/api/document?id=${encodeURIComponent(id)}`;
+      const navigatorBase = process.env.NEXT_PUBLIC_NAVIGATOR_UI_BASE ?? 'https://apps-d.docusign.com';
+      window.location.href = `${navigatorBase}/send/navigator/agreements/${encodeURIComponent(id)}`;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
@@ -73,7 +61,7 @@ export default function Home() {
             <CardTitle className="text-xl">Navigator Agreement Viewer</CardTitle>
           </div>
           <CardDescription>
-            Agreement ID を入力すると、DocuSign Navigator の文書ページへリダイレクトします。
+            Agreement ID を入力すると、DocuSign Navigator でその契約書を開きます。
           </CardDescription>
         </CardHeader>
         <CardContent>

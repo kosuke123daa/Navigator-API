@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useRef } from 'react';
 import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,10 +56,12 @@ export default function Home() {
   const [agreement, setAgreement] = useState<Agreement | null>(null);
   const [docUrl, setDocUrl] = useState<string | null>(null);
   const [docError, setDocError] = useState<string | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const fetchDocument = () => {
     setDocError(null);
     setDocUrl(`/api/document?id=${encodeURIComponent(agreementId.trim())}`);
+    setTimeout(() => previewRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -192,7 +194,7 @@ export default function Home() {
         )}
 
         {docUrl && (
-          <Card>
+          <Card ref={previewRef as React.Ref<HTMLDivElement>}>
             <CardHeader>
               <CardTitle className="text-base">文書プレビュー</CardTitle>
             </CardHeader>

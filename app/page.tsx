@@ -54,6 +54,30 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agreement, setAgreement] = useState<Agreement | null>(null);
+  const [docUrl, setDocUrl] = useState<string | null>(null);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState<string | null>(null);
+
+  const fetchDocument = async () => {
+    setDocLoading(true);
+    setDocError(null);
+    if (docUrl) URL.revokeObjectURL(docUrl);
+    setDocUrl(null);
+    try {
+      const res = await fetch(`/api/document?id=${encodeURIComponent(agreementId.trim())}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setDocError(data.error ?? `Error ${res.status}`);
+        return;
+      }
+      const blob = await res.blob();
+      setDocUrl(URL.createObjectURL(blob));
+    } catch (err: unknown) {
+      setDocError(err instanceof Error ? err.message : 'エラーが発生しました');
+    } finally {
+      setDocLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -63,6 +87,8 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setAgreement(null);
+    setDocUrl(null);
+    setDocError(null);
 
     try {
       const res = await fetch(`/api/agreement?id=${encodeURIComponent(id)}`);
@@ -164,6 +190,38 @@ export default function Home() {
                 <Row label="作成日時" value={new Date(agreement.metadata.created_at).toLocaleString('ja-JP')} />
                 <Row label="更新日時" value={new Date(agreement.metadata.modified_at).toLocaleString('ja-JP')} />
               </section>
+
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  onClick={fetchDocument}
+                  disabled={docLoading}
+                  className="w-full bg-teal-600 hover:bg-teal-700"
+                >
+                  {docLoading ? '文書取得中...' : '文書を表示 (BLOB)'}
+                </Button>
+                {docError && (
+                  <p className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {docError}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {docUrl && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">文書プレビュー</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 overflow-hidden rounded-b-lg">
+              <iframe
+                src={docUrl}
+                className="w-full border-0"
+                style={{ height: '80vh' }}
+                title="Agreement Document"
+              />
             </CardContent>
           </Card>
         )}

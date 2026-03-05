@@ -1,36 +1,46 @@
 import { NextResponse } from 'next/server';
-import docusign from 'docusign-esign';
+import crypto from 'crypto';
 
 const NAVIGATOR_BASE = 'https://api-d.docusign.com';
+const AUTH_BASE = 'https://account-d.docusign.com';
 
 async function getAccessToken(): Promise<string> {
-  const apiClient = new docusign.ApiClient();
-  apiClient.setOAuthBasePath('account-d.docusign.com');
+  const privateKey = process.env.DOCUSIGN_PRIVATE_KEY!.replace(/\\n/g, '\n');
+  const integrationKey = process.env.DOCUSIGN_INTEGRATION_KEY!;
+  const userId = process.env.DOCUSIGN_USER_ID!;
 
-  const result = await apiClient.requestJWTUserToken(
-    process.env.DOCUSIGN_INTEGRATION_KEY!,
-    process.env.DOCUSIGN_USER_ID!,
-    ['signature', 'impersonation', 'navigator.agreements:read'],
-    Buffer.from(process.env.DOCUSIGN_PRIVATE_KEY!.replace(/\\n/g, '\n')),
-    3600
-  );
-  const body = result.body as Record<string, unknown>;
-  console.log('[health] token body keys:', Object.keys(body));
-  console.log('[health] access_token type:', typeof body.access_token);
-  const tokenStr = String(body.access_token);
-  const parts = tokenStr.split('.');
-  console.log('[health] token parts count:', parts.length);
-  console.log('[health] token scope:', body.scope);
-  if (parts.length >= 2) {
-    try {
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-      console.log('[health] token payload:', JSON.stringify(payload));
-    } catch (e) {
-      console.log('[health] token payload decode failed:', e);
-    }
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ typ: 'JWT', alg: 'RS256' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    iss: integrationKey,
+    sub: userId,
+    aud: 'account-d.docusign.com',
+    iat: now,
+    exp: now + 3600,
+    scope: 'signature impersonation navigator.agreements:read',
+  })).toString('base64url');
+
+  const sign = crypto.createSign('RSA-SHA256');
+  sign.update(`${header}.${payload}`);
+  const signature = sign.sign(privateKey, 'base64url');
+  const jwt = `${header}.${payload}.${signature}`;
+
+  const tokenRes = await fetch(`${AUTH_BASE}/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }),
+  });
+
+  const tokenData = await tokenRes.json() as { access_token?: string; error?: string; error_description?: string; scope?: string };
+  console.log('[health] oauth response status:', tokenRes.status);
+  console.log('[health] oauth scope granted:', tokenData.scope);
+  if (!tokenData.access_token) {
+    throw new Error(`OAuth error: ${tokenData.error} - ${tokenData.error_description}`);
   }
-  console.log('[health] access_token has newlines:', tokenStr.includes('\n'));
-  return result.body.access_token;
+  return tokenData.access_token;
 }
 
 export async function GET() {
@@ -41,7 +51,7 @@ export async function GET() {
     console.log('[health] userId:', process.env.DOCUSIGN_USER_ID);
 
     const token = await getAccessToken();
-    console.log('[health] JWT token obtained, length:', token.length);
+    console.log('[health] access token obtained, length:', token.length);
 
     const url = `${NAVIGATOR_BASE}/v1/accounts/${accountId}/agreements?limit=1`;
     console.log('[health] fetching:', url);
@@ -64,10 +74,8 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, status: res.status });
   } catch (err: unknown) {
-    const sdkBody = (err as { response?: { body?: unknown } })?.response?.body;
     const message = err instanceof Error ? err.message : String(err);
-    const detail = sdkBody ? JSON.stringify(sdkBody) : message;
-    console.error('[health] error:', detail);
-    return NextResponse.json({ ok: false, status: 0, detail }, { status: 200 });
+    console.error('[health] error:', message);
+    return NextResponse.json({ ok: false, status: 0, detail: message }, { status: 200 });
   }
 }

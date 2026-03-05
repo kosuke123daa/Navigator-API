@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Navigator Agreement Viewer',
@@ -7,7 +8,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
-      <body style={{ margin: 0, fontFamily: 'sans-serif', background: '#f5f5f5' }}>
+      <body className="min-h-screen bg-muted font-sans antialiased">
         {children}
       </body>
     </html>

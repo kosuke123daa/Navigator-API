@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+import { FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Home() {
   const [agreementId, setAgreementId] = useState('');
@@ -38,126 +43,45 @@ export default function Home() {
   };
 
   return (
-    <main style={styles.main}>
-      <div style={styles.card}>
-        {/* DocuSign Navigator ロゴ風ヘッダー */}
-        <div style={styles.header}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="#26a69a">
-            <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z" />
-          </svg>
-          <h1 style={styles.title}>Navigator Agreement Viewer</h1>
-        </div>
+    <main className="flex min-h-screen items-center justify-center p-6">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <FileText className="h-6 w-6 text-teal-600" />
+            <CardTitle className="text-xl">Navigator Agreement Viewer</CardTitle>
+          </div>
+          <CardDescription>
+            Agreement ID を入力すると、DocuSign Navigator の文書ページへリダイレクトします。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="agreementId">Agreement ID</Label>
+              <Input
+                id="agreementId"
+                value={agreementId}
+                onChange={e => setAgreementId(e.target.value)}
+                placeholder="例: 48e593bd-73e8-455f-92e7-xxxxxxxxxxxx"
+                disabled={loading}
+                autoFocus
+                spellCheck={false}
+                className="font-mono"
+              />
+            </div>
 
-        <p style={styles.description}>
-          Agreement ID を入力すると、DocuSign Navigator の文書ページへリダイレクトします。
-        </p>
+            {error && (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </p>
+            )}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <label style={styles.label} htmlFor="agreementId">
-            Agreement ID
-          </label>
-          <input
-            id="agreementId"
-            type="text"
-            value={agreementId}
-            onChange={e => setAgreementId(e.target.value)}
-            placeholder="例: 48e593bd-73e8-455f-92e7-xxxxxxxxxxxx"
-            style={styles.input}
-            disabled={loading}
-            autoFocus
-            spellCheck={false}
-          />
-
-          {error && <p style={styles.error}>{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading || !agreementId.trim()}
-            style={{
-              ...styles.button,
-              opacity: loading || !agreementId.trim() ? 0.5 : 1,
-              cursor: loading || !agreementId.trim() ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {loading ? '取得中...' : '文書を開く →'}
-          </button>
-        </form>
-      </div>
+            <Button type="submit" disabled={loading || !agreementId.trim()} className="w-full bg-teal-600 hover:bg-teal-700">
+              {loading ? '取得中...' : '文書を開く →'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  main: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '24px',
-  },
-  card: {
-    background: '#fff',
-    borderRadius: '12px',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-    padding: '40px',
-    width: '100%',
-    maxWidth: '480px',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginBottom: '16px',
-  },
-  title: {
-    margin: 0,
-    fontSize: '20px',
-    fontWeight: 700,
-    color: '#1a1a1a',
-  },
-  description: {
-    margin: '0 0 28px',
-    fontSize: '14px',
-    color: '#666',
-    lineHeight: 1.6,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  label: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#444',
-  },
-  input: {
-    padding: '12px 14px',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
-    fontSize: '14px',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-    fontFamily: 'monospace',
-  },
-  error: {
-    margin: 0,
-    fontSize: '13px',
-    color: '#d32f2f',
-    background: '#ffebee',
-    border: '1px solid #ffcdd2',
-    borderRadius: '6px',
-    padding: '10px 12px',
-  },
-  button: {
-    marginTop: '4px',
-    padding: '13px',
-    borderRadius: '8px',
-    border: 'none',
-    background: '#26a69a',
-    color: '#fff',
-    fontSize: '15px',
-    fontWeight: 600,
-    transition: 'background 0.2s',
-  },
-};

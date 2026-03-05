@@ -17,8 +17,19 @@ async function getAccessToken(): Promise<string> {
   const body = result.body as Record<string, unknown>;
   console.log('[health] token body keys:', Object.keys(body));
   console.log('[health] access_token type:', typeof body.access_token);
-  console.log('[health] access_token prefix:', String(body.access_token).slice(0, 60));
-  console.log('[health] access_token has newlines:', String(body.access_token).includes('\n'));
+  const tokenStr = String(body.access_token);
+  const parts = tokenStr.split('.');
+  console.log('[health] token parts count:', parts.length);
+  console.log('[health] token scope:', body.scope);
+  if (parts.length >= 2) {
+    try {
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+      console.log('[health] token payload:', JSON.stringify(payload));
+    } catch (e) {
+      console.log('[health] token payload decode failed:', e);
+    }
+  }
+  console.log('[health] access_token has newlines:', tokenStr.includes('\n'));
   return result.body.access_token;
 }
 

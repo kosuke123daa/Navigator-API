@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, useRef } from 'react';
+import { useState, FormEvent } from 'react';
 import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,14 +54,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agreement, setAgreement] = useState<Agreement | null>(null);
-  const [docUrl, setDocUrl] = useState<string | null>(null);
-  const [docError, setDocError] = useState<string | null>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
-
   const fetchDocument = () => {
-    setDocError(null);
-    setDocUrl(`/api/document?id=${encodeURIComponent(agreementId.trim())}`);
-    setTimeout(() => previewRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    window.open(`/api/document?id=${encodeURIComponent(agreementId.trim())}`, '_blank');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -72,7 +66,6 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setAgreement(null);
-    setDocUrl(null);
 
     try {
       const res = await fetch(`/api/agreement?id=${encodeURIComponent(id)}`);
@@ -183,31 +176,11 @@ export default function Home() {
                 >
                   文書を表示
                 </Button>
-                {docError && (
-                  <p className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {docError}
-                  </p>
-                )}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {docUrl && (
-          <Card ref={previewRef as React.Ref<HTMLDivElement>}>
-            <CardHeader>
-              <CardTitle className="text-base">文書プレビュー</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 overflow-hidden rounded-b-lg">
-              <iframe
-                src={docUrl}
-                className="w-full border-0"
-                style={{ height: '80vh' }}
-                title="Agreement Document"
-              />
-            </CardContent>
-          </Card>
-        )}
       </div>
     </main>
   );

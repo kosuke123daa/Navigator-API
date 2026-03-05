@@ -17,7 +17,7 @@ async function getAccessToken(): Promise<string> {
     aud: 'account-d.docusign.com',
     iat: now,
     exp: now + 3600,
-    scope: 'signature impersonation navigator.agreements:read',
+    scope: 'signature impersonation adm_store_unified_repo_read',
   })).toString('base64url');
 
   const sign = crypto.createSign('RSA-SHA256');

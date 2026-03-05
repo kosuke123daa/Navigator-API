@@ -55,28 +55,11 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [agreement, setAgreement] = useState<Agreement | null>(null);
   const [docUrl, setDocUrl] = useState<string | null>(null);
-  const [docLoading, setDocLoading] = useState(false);
   const [docError, setDocError] = useState<string | null>(null);
 
-  const fetchDocument = async () => {
-    setDocLoading(true);
+  const fetchDocument = () => {
     setDocError(null);
-    if (docUrl) URL.revokeObjectURL(docUrl);
-    setDocUrl(null);
-    try {
-      const res = await fetch(`/api/document?id=${encodeURIComponent(agreementId.trim())}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setDocError(data.error ?? `Error ${res.status}`);
-        return;
-      }
-      const blob = await res.blob();
-      setDocUrl(URL.createObjectURL(blob));
-    } catch (err: unknown) {
-      setDocError(err instanceof Error ? err.message : 'エラーが発生しました');
-    } finally {
-      setDocLoading(false);
-    }
+    setDocUrl(`/api/document?id=${encodeURIComponent(agreementId.trim())}`);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -88,7 +71,6 @@ export default function Home() {
     setError(null);
     setAgreement(null);
     setDocUrl(null);
-    setDocError(null);
 
     try {
       const res = await fetch(`/api/agreement?id=${encodeURIComponent(id)}`);
@@ -195,10 +177,9 @@ export default function Home() {
                 <Button
                   type="button"
                   onClick={fetchDocument}
-                  disabled={docLoading}
                   className="w-full bg-teal-600 hover:bg-teal-700"
                 >
-                  {docLoading ? '文書取得中...' : '文書を表示 (BLOB)'}
+                  文書を表示
                 </Button>
                 {docError && (
                   <p className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

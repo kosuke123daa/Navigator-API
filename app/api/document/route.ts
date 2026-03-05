@@ -132,6 +132,7 @@ export async function GET(request: NextRequest) {
       access: 'private',
       contentType,
       addRandomSuffix: false,
+      allowOverwrite: true,
     });
     console.log('[document] saved to Vercel Blob:', blobPath);
 

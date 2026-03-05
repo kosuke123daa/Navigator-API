@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { put, head } from '@vercel/blob';
 
 const AUTH_BASE = 'https://account-d.docusign.com';
+const NAVIGATOR_BASE = 'https://api-d.docusign.com';
+// All Navigator documents are stored under this prefix to avoid collisions
+// with other apps using the same Vercel Blob store (e.g. mysite/).
+const BLOB_PREFIX = 'navigator';
 
 async function getAccessToken(): Promise<string> {
   const privateKey = process.env.DOCUSIGN_PRIVATE_KEY!.replace(/\\n/g, '\n');
@@ -40,6 +45,13 @@ async function getAccessToken(): Promise<string> {
   return tokenData.access_token;
 }
 
+function extFromContentType(ct: string): string {
+  if (ct.includes('pdf')) return 'pdf';
+  if (ct.includes('docx') || ct.includes('wordprocessingml')) return 'docx';
+  if (ct.includes('doc')) return 'doc';
+  return 'bin';
+}
+
 export async function GET(request: NextRequest) {
   const agreementId = request.nextUrl.searchParams.get('id');
   if (!agreementId) {
@@ -49,17 +61,44 @@ export async function GET(request: NextRequest) {
   try {
     const accountId = process.env.DOCUSIGN_API_ACCOUNT_ID!;
     console.log('[document] agreementId:', agreementId);
+
+    // --- 1. Check Vercel Blob cache (try common extensions) ---
+    for (const ext of ['pdf', 'docx', 'doc', 'bin']) {
+      const blobPath = `${BLOB_PREFIX}/${agreementId}.${ext}`;
+      try {
+        const info = await head(blobPath);
+        if (info?.url) {
+          console.log('[document] cache hit:', blobPath);
+          const cached = await fetch(info.url, { cache: 'no-store' });
+          const body = await cached.arrayBuffer();
+          return new NextResponse(body, {
+            status: 200,
+            headers: {
+              'Content-Type': info.contentType ?? 'application/octet-stream',
+              'Content-Disposition': 'inline',
+              'X-Source': 'vercel-blob-cache',
+            },
+          });
+        }
+      } catch {
+        // head() throws if not found — continue
+      }
+    }
+
+    // --- 2. Fetch from DocuSign Navigator ---
     const token = await getAccessToken();
 
-    // Get agreement to find document URL
     const agreementRes = await fetch(
-      `https://api-d.docusign.com/v1/accounts/${accountId}/agreements/${agreementId}`,
+      `${NAVIGATOR_BASE}/v1/accounts/${accountId}/agreements/${agreementId}`,
       { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
     );
 
     if (!agreementRes.ok) {
       const body = await agreementRes.text();
-      return NextResponse.json({ error: `Agreement fetch failed: ${agreementRes.status}`, detail: body }, { status: agreementRes.status });
+      return NextResponse.json(
+        { error: `Agreement fetch failed: ${agreementRes.status}`, detail: body },
+        { status: agreementRes.status }
+      );
     }
 
     const agreement = await agreementRes.json() as { _links?: { document?: { href?: string } } };
@@ -69,27 +108,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No document URL in agreement' }, { status: 404 });
     }
 
-    // Try with access_token as query param (some DocuSign services don't accept Bearer header)
-    const urlWithToken = `${documentUrl}?access_token=${encodeURIComponent(token)}`;
-    console.log('[document] fetching document URL (token as query param)');
-    const docRes = await fetch(urlWithToken, { cache: 'no-store' });
-    console.log('[document] response status:', docRes.status);
+    const docRes = await fetch(`${documentUrl}?access_token=${encodeURIComponent(token)}`, {
+      cache: 'no-store',
+    });
+
+    console.log('[document] DocuSign response status:', docRes.status);
 
     if (!docRes.ok) {
       const errBody = await docRes.text();
       console.error('[document] error body:', errBody);
-      return NextResponse.json({ error: `Document fetch failed: ${docRes.status}`, detail: errBody }, { status: docRes.status });
+      return NextResponse.json(
+        { error: `Document fetch failed: ${docRes.status}`, detail: errBody },
+        { status: docRes.status }
+      );
     }
 
-    console.log('[document] doc response status:', docRes.status);
     const contentType = docRes.headers.get('content-type') ?? 'application/octet-stream';
-    const body = await docRes.arrayBuffer();
+    const ext = extFromContentType(contentType);
+    const blobPath = `${BLOB_PREFIX}/${agreementId}.${ext}`;
+    const docBuffer = await docRes.arrayBuffer();
 
-    return new NextResponse(body, {
+    // --- 3. Store in Vercel Blob under navigator/ prefix ---
+    await put(blobPath, docBuffer, {
+      access: 'public',
+      contentType,
+      addRandomSuffix: false,
+    });
+    console.log('[document] saved to Vercel Blob:', blobPath);
+
+    return new NextResponse(docBuffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': 'inline',
+        'X-Source': 'docusign',
       },
     });
   } catch (err: unknown) {

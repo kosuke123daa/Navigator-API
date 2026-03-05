@@ -69,12 +69,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No document URL in agreement' }, { status: 404 });
     }
 
-    // Proxy the document with auth token
+    // Try without auth first (document-public-dms may be publicly accessible)
     console.log('[document] fetching document URL:', documentUrl);
-    const docRes = await fetch(documentUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-    });
+    let docRes = await fetch(documentUrl, { cache: 'no-store' });
+    console.log('[document] no-auth response status:', docRes.status);
+
+    // If that fails, retry with Bearer token
+    if (!docRes.ok) {
+      console.log('[document] retrying with Bearer token');
+      docRes = await fetch(documentUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+      console.log('[document] with-auth response status:', docRes.status);
+    }
 
     if (!docRes.ok) {
       return NextResponse.json({ error: `Document fetch failed: ${docRes.status}` }, { status: docRes.status });

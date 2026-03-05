@@ -56,7 +56,7 @@ export default function Home() {
         return;
       }
 
-      window.location.href = data.documentUrl;
+      window.open(`/api/document?id=${encodeURIComponent(id)}`, '_blank');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {

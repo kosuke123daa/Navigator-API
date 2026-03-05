@@ -143,9 +143,12 @@ export async function GET(request: NextRequest) {
     }
 
     const contentType = docRes.headers.get('content-type') ?? 'application/octet-stream';
+    console.log('[document] content-type:', contentType);
     const ext = extFromContentType(contentType);
     const blobPath = `${BLOB_PREFIX}/${agreementId}.${ext}`;
     const docBuffer = await docRes.arrayBuffer();
+    const firstBytes = Buffer.from(docBuffer.slice(0, 5)).toString('utf8');
+    console.log('[document] first 5 bytes:', firstBytes, '/ size:', docBuffer.byteLength);
 
     // --- 3. Store in Vercel Blob under navigator/ prefix ---
     await put(blobPath, docBuffer, {

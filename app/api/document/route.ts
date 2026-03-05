@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const accountId = process.env.DOCUSIGN_API_ACCOUNT_ID!;
+    console.log('[document] agreementId:', agreementId);
     const token = await getAccessToken();
 
     // Get agreement to find document URL
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Proxy the document with auth token
+    console.log('[document] fetching document URL:', documentUrl);
     const docRes = await fetch(documentUrl, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
@@ -78,6 +80,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: `Document fetch failed: ${docRes.status}` }, { status: docRes.status });
     }
 
+    console.log('[document] doc response status:', docRes.status);
     const contentType = docRes.headers.get('content-type') ?? 'application/octet-stream';
     const body = await docRes.arrayBuffer();
 

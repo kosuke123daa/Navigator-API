@@ -101,17 +101,35 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const agreement = await agreementRes.json() as { _links?: { document?: { href?: string } } };
-    const documentUrl = agreement._links?.document?.href;
+    const agreement = await agreementRes.json() as {
+      source_name?: string;
+      source_id?: string;
+      _links?: { document?: { href?: string } };
+    };
 
-    if (!documentUrl) {
-      return NextResponse.json({ error: 'No document URL in agreement' }, { status: 404 });
+    // --- 3. Fetch document bytes ---
+    // ESign source: use eSign API (envelope combined PDF) — avoids DMS RBAC restrictions
+    // Other sources: try _links.document.href with Bearer token
+    let docRes: Response;
+    if (agreement.source_name === 'ESign' && agreement.source_id) {
+      const envelopeId = agreement.source_id;
+      const eSignUrl = `https://demo.docusign.net/restapi/v2.1/accounts/${accountId}/envelopes/${envelopeId}/documents/combined`;
+      console.log('[document] fetching via eSign API:', eSignUrl);
+      docRes = await fetch(eSignUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+    } else {
+      const documentUrl = agreement._links?.document?.href;
+      if (!documentUrl) {
+        return NextResponse.json({ error: 'No document URL in agreement' }, { status: 404 });
+      }
+      console.log('[document] fetching via DMS link:', documentUrl);
+      docRes = await fetch(documentUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
     }
-
-    const docRes = await fetch(documentUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-    });
 
     console.log('[document] DocuSign response status:', docRes.status);
 

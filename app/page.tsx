@@ -7,10 +7,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+type HealthStatus = 'idle' | 'checking' | 'ok' | 'error';
+
 export default function Home() {
   const [agreementId, setAgreementId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [healthStatus, setHealthStatus] = useState<HealthStatus>('idle');
+  const [healthDetail, setHealthDetail] = useState<string | null>(null);
+
+  const checkHealth = async () => {
+    setHealthStatus('checking');
+    setHealthDetail(null);
+    try {
+      const res = await fetch('/api/health');
+      const data = await res.json();
+      if (data.ok) {
+        setHealthStatus('ok');
+      } else {
+        setHealthStatus('error');
+        setHealthDetail(`HTTP ${data.status}: ${data.detail ?? '不明なエラー'}`);
+      }
+    } catch (err: unknown) {
+      setHealthStatus('error');
+      setHealthDetail(err instanceof Error ? err.message : 'ネットワークエラー');
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -80,6 +102,29 @@ export default function Home() {
               {loading ? '取得中...' : '文書を開く →'}
             </Button>
           </form>
+
+          <div className="mt-4 border-t pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={checkHealth}
+              disabled={healthStatus === 'checking'}
+            >
+              {healthStatus === 'checking' ? '確認中...' : 'Navigator API 接続確認'}
+            </Button>
+
+            {healthStatus === 'ok' && (
+              <p className="mt-2 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">
+                ✓ Navigator API に接続できています
+              </p>
+            )}
+            {healthStatus === 'error' && (
+              <p className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                接続失敗: {healthDetail}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
     </main>

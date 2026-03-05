@@ -11,7 +11,7 @@ async function getAccessToken(): Promise<string> {
     process.env.DOCUSIGN_INTEGRATION_KEY!,
     process.env.DOCUSIGN_USER_ID!,
     ['signature', 'impersonation', 'navigator.agreements:read'],
-    Buffer.from(process.env.DOCUSIGN_PRIVATE_KEY!),
+    Buffer.from(process.env.DOCUSIGN_PRIVATE_KEY!.replace(/\\n/g, '\n')),
     3600
   );
   return result.body.access_token;

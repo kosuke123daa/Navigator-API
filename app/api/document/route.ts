@@ -62,30 +62,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: `Agreement fetch failed: ${agreementRes.status}`, detail: body }, { status: agreementRes.status });
     }
 
-    const agreement = await agreementRes.json() as { _links?: { document?: { href?: string } } };
-    const documentUrl = agreement._links?.document?.href;
+    const agreement = await agreementRes.json() as { document_id?: string; _links?: { document?: { href?: string } } };
+    const documentId = agreement.document_id;
 
-    if (!documentUrl) {
-      return NextResponse.json({ error: 'No document URL in agreement' }, { status: 404 });
+    if (!documentId) {
+      return NextResponse.json({ error: 'No document_id in agreement' }, { status: 404 });
     }
 
-    // Try without auth first (document-public-dms may be publicly accessible)
+    // Use Navigator API document endpoint directly (same auth as agreement endpoint)
+    const documentUrl = `https://api-d.docusign.com/v1/accounts/${accountId}/agreements/${agreementId}/documents/${documentId}`;
     console.log('[document] fetching document URL:', documentUrl);
-    let docRes = await fetch(documentUrl, { cache: 'no-store' });
-    console.log('[document] no-auth response status:', docRes.status);
-
-    // If that fails, retry with Bearer token
-    if (!docRes.ok) {
-      console.log('[document] retrying with Bearer token');
-      docRes = await fetch(documentUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
-      });
-      console.log('[document] with-auth response status:', docRes.status);
-    }
+    const docRes = await fetch(documentUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    console.log('[document] response status:', docRes.status);
 
     if (!docRes.ok) {
-      return NextResponse.json({ error: `Document fetch failed: ${docRes.status}` }, { status: docRes.status });
+      const errBody = await docRes.text();
+      console.error('[document] error body:', errBody);
+      return NextResponse.json({ error: `Document fetch failed: ${docRes.status}`, detail: errBody }, { status: docRes.status });
     }
 
     console.log('[document] doc response status:', docRes.status);

@@ -62,20 +62,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: `Agreement fetch failed: ${agreementRes.status}`, detail: body }, { status: agreementRes.status });
     }
 
-    const agreement = await agreementRes.json() as { document_id?: string; _links?: { document?: { href?: string } } };
-    const documentId = agreement.document_id;
+    const agreement = await agreementRes.json() as { _links?: { document?: { href?: string } } };
+    const documentUrl = agreement._links?.document?.href;
 
-    if (!documentId) {
-      return NextResponse.json({ error: 'No document_id in agreement' }, { status: 404 });
+    if (!documentUrl) {
+      return NextResponse.json({ error: 'No document URL in agreement' }, { status: 404 });
     }
 
-    // Use Navigator API document endpoint directly (same auth as agreement endpoint)
-    const documentUrl = `https://api-d.docusign.com/v1/accounts/${accountId}/agreements/${agreementId}/documents/${documentId}`;
-    console.log('[document] fetching document URL:', documentUrl);
-    const docRes = await fetch(documentUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-    });
+    // Try with access_token as query param (some DocuSign services don't accept Bearer header)
+    const urlWithToken = `${documentUrl}?access_token=${encodeURIComponent(token)}`;
+    console.log('[document] fetching document URL (token as query param)');
+    const docRes = await fetch(urlWithToken, { cache: 'no-store' });
     console.log('[document] response status:', docRes.status);
 
     if (!docRes.ok) {

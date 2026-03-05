@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { put, head } from '@vercel/blob';
+import { put } from '@vercel/blob';
 
 const AUTH_BASE = 'https://account-d.docusign.com';
 const NAVIGATOR_BASE = 'https://api-d.docusign.com';
@@ -62,30 +62,7 @@ export async function GET(request: NextRequest) {
     const accountId = process.env.DOCUSIGN_API_ACCOUNT_ID!;
     console.log('[document] agreementId:', agreementId);
 
-    // --- 1. Check Vercel Blob cache (try common extensions) ---
-    for (const ext of ['pdf', 'docx', 'doc', 'bin']) {
-      const blobPath = `${BLOB_PREFIX}/${agreementId}.${ext}`;
-      try {
-        const info = await head(blobPath);
-        if (info?.url) {
-          console.log('[document] cache hit:', blobPath);
-          const cached = await fetch(info.url, { cache: 'no-store' });
-          const body = await cached.arrayBuffer();
-          return new NextResponse(body, {
-            status: 200,
-            headers: {
-              'Content-Type': info.contentType ?? 'application/octet-stream',
-              'Content-Disposition': 'inline',
-              'X-Source': 'vercel-blob-cache',
-            },
-          });
-        }
-      } catch {
-        // head() throws if not found — continue
-      }
-    }
-
-    // --- 2. Fetch from DocuSign Navigator ---
+    // --- 1. Fetch from DocuSign Navigator ---
     const token = await getAccessToken();
 
     const agreementRes = await fetch(

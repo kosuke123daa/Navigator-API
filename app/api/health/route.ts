@@ -20,34 +20,38 @@ async function getAccessToken(): Promise<string> {
 export async function GET() {
   try {
     const accountId = process.env.DOCUSIGN_API_ACCOUNT_ID!;
+    console.log('[health] accountId:', accountId);
+    console.log('[health] integrationKey:', process.env.DOCUSIGN_INTEGRATION_KEY);
+    console.log('[health] userId:', process.env.DOCUSIGN_USER_ID);
 
-    // JWT トークン取得を確認
     const token = await getAccessToken();
+    console.log('[health] JWT token obtained, length:', token.length);
 
-    // Navigator API の agreements 一覧を limit=1 で叩いてアクセス確認
-    const res = await fetch(
-      `${NAVIGATOR_BASE}/v1/accounts/${accountId}/agreements?limit=1`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
-      }
-    );
+    const url = `${NAVIGATOR_BASE}/v1/accounts/${accountId}/agreements?limit=1`;
+    console.log('[health] fetching:', url);
+
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
 
     const body = await res.text();
+    console.log('[health] response status:', res.status);
+    console.log('[health] response body:', body);
 
     if (!res.ok) {
       return NextResponse.json(
-        { ok: false, status: res.status, detail: body },
-        { status: 200 } // UI 側で判定するため常に 200 で返す
+        { ok: false, status: res.status, detail: body || `HTTP ${res.status}` },
+        { status: 200 }
       );
     }
 
     return NextResponse.json({ ok: true, status: res.status });
   } catch (err: unknown) {
-    // docusign-esign SDK のエラーは response.body に詳細が入っている
     const sdkBody = (err as { response?: { body?: unknown } })?.response?.body;
     const message = err instanceof Error ? err.message : String(err);
     const detail = sdkBody ? JSON.stringify(sdkBody) : message;
+    console.error('[health] error:', detail);
     return NextResponse.json({ ok: false, status: 0, detail }, { status: 200 });
   }
 }

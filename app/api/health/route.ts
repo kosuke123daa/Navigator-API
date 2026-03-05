@@ -44,7 +44,10 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, status: res.status });
   } catch (err: unknown) {
+    // docusign-esign SDK のエラーは response.body に詳細が入っている
+    const sdkBody = (err as { response?: { body?: unknown } })?.response?.body;
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, status: 0, detail: message }, { status: 200 });
+    const detail = sdkBody ? JSON.stringify(sdkBody) : message;
+    return NextResponse.json({ ok: false, status: 0, detail }, { status: 200 });
   }
 }

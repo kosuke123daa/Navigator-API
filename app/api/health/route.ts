@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
 const NAVIGATOR_BASE = 'https://api-d.docusign.com';
-const AUTH_BASE = 'https://apps-d.docusign.com';
+const AUTH_BASE = 'https://account-d.docusign.com';
 
 async function getAccessToken(): Promise<string> {
   const privateKey = process.env.DOCUSIGN_PRIVATE_KEY!.replace(/\\n/g, '\n');
@@ -14,7 +14,7 @@ async function getAccessToken(): Promise<string> {
   const payload = Buffer.from(JSON.stringify({
     iss: integrationKey,
     sub: userId,
-    aud: 'apps-d.docusign.com',
+    aud: 'account-d.docusign.com',
     iat: now,
     exp: now + 3600,
     scope: 'signature impersonation navigator.agreements:read',

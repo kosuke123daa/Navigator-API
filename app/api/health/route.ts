@@ -14,6 +14,11 @@ async function getAccessToken(): Promise<string> {
     Buffer.from(process.env.DOCUSIGN_PRIVATE_KEY!.replace(/\\n/g, '\n')),
     3600
   );
+  const body = result.body as Record<string, unknown>;
+  console.log('[health] token body keys:', Object.keys(body));
+  console.log('[health] access_token type:', typeof body.access_token);
+  console.log('[health] access_token prefix:', String(body.access_token).slice(0, 60));
+  console.log('[health] access_token has newlines:', String(body.access_token).includes('\n'));
   return result.body.access_token;
 }
 

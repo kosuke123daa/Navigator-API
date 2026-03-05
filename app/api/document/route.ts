@@ -108,7 +108,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No document URL in agreement' }, { status: 404 });
     }
 
-    const docRes = await fetch(`${documentUrl}?access_token=${encodeURIComponent(token)}`, {
+    const docRes = await fetch(documentUrl, {
+      headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
 

@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
 
     // --- 3. Store in Vercel Blob under navigator/ prefix ---
     await put(blobPath, docBuffer, {
-      access: 'public',
+      access: 'private',
       contentType,
       addRandomSuffix: false,
     });
